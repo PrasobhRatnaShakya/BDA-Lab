@@ -1,0 +1,99 @@
+-- --- STEP 1: SETUP DATABASE ---
+DROP DATABASE IF EXISTS retail_analytics;
+CREATE DATABASE retail_analytics;
+USE retail_analytics;
+
+-- --- STEP 2: CREATE TABLES ---
+
+-- 1. Purchases Table
+CREATE TABLE purchases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(10),
+    product VARCHAR(50),
+    category VARCHAR(50),
+    amount DECIMAL(10,2),
+    purchase_date DATE
+);
+
+-- 2. Clicks Table
+CREATE TABLE clicks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(10),
+    page VARCHAR(50),
+    element VARCHAR(50),
+    click_time DATETIME
+);
+
+-- 3. Reviews Table
+CREATE TABLE reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_id VARCHAR(10),
+    product VARCHAR(50),
+    rating INT,
+    comment TEXT
+);
+
+-- --- STEP 3: INSERT DATA ---
+
+-- Insert Purchases
+INSERT INTO purchases (customer_id, product, category, amount, purchase_date) VALUES 
+('C001', 'Laptop', 'Electronics', 1200.00, '2026-01-10'),
+('C001', 'Mouse', 'Electronics', 25.00, '2026-01-12'),
+('C002', 'Running Shoes', 'Fashion', 80.00, '2025-11-05'),
+('C003', 'Desk Chair', 'Furniture', 150.00, '2026-01-25'),
+('C004', 'Gaming Monitor', 'Electronics', 400.00, '2026-02-01'),
+('C005', 'T-Shirt', 'Fashion', 20.00, '2025-10-10'),
+('C001', 'Headphones', 'Electronics', 200.00, '2026-01-15');
+
+-- Insert Clicks
+INSERT INTO clicks (customer_id, page, element, click_time) VALUES 
+('C001', 'Product_Page', 'Laptop', NOW()),
+('C001', 'Checkout', 'Pay_Button', NOW()),
+('C002', 'Home', 'Banner', NOW()),
+('C006', 'Product_Page', 'SmartWatch', NOW()), 
+('C006', 'Product_Page', 'SmartWatch', NOW()),
+('C006', 'Cart', 'Add_Item', NOW());
+
+-- Insert Reviews
+INSERT INTO reviews (customer_id, product, rating, comment) VALUES 
+('C001', 'Laptop', 5, 'Excellent performance!'),
+('C003', 'Desk Chair', 2, 'One wheel is broken.'),
+('C004', 'Gaming Monitor', 5, 'Best display ever.'),
+('C002', 'Running Shoes', 1, 'Stopped working after a week. Bad quality.');
+
+-- --- STEP 4: PERFORM ANALYTICS ---
+
+-- 1. [DESCRIPTIVE] Total Revenue per Category
+SELECT category, SUM(amount) AS Total_Revenue, COUNT(*) AS Items_Sold
+FROM purchases
+GROUP BY category;
+
+-- 2. [DIAGNOSTIC] Products with Low Ratings (< 3 Stars)
+SELECT product, rating, comment
+FROM reviews
+WHERE rating < 3;
+
+-- 3. [PREDICTIVE] High Churn Risk Customers
+-- (Customers who bought before 2026 but NOT in 2026)
+SELECT DISTINCT customer_id AS At_Risk_Customer
+FROM purchases
+WHERE customer_id NOT IN (
+    SELECT DISTINCT customer_id 
+    FROM purchases 
+    WHERE purchase_date >= '2026-01-01'
+);
+
+-- 4. [PRESCRIPTIVE] Actions Required
+
+-- Action A: VIP Coupon Targets (Spent > $1000)
+SELECT customer_id, SUM(amount) AS Total_Spent, 'Send VIP Coupon' AS Recommended_Action
+FROM purchases
+GROUP BY customer_id
+HAVING SUM(amount) > 1000;
+
+-- Action B: Urgent Support Tickets (Bad Keywords)
+SELECT customer_id, product, comment, 'Open Support Ticket' AS Recommended_Action
+FROM reviews
+WHERE comment LIKE '%Broken%' 
+   OR comment LIKE '%Bad%' 
+   OR comment LIKE '%Stopped%';
