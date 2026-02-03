@@ -1,0 +1,84 @@
+db = db.getSiblingDB('retail_analytics'); 
+db.dropDatabase(); // Clears previous data to start fresh
+print(">>> Old database dropped. Creating new data...");
+
+// --- STEP 2: INSERT DATA ---
+
+// 1. Purchase History (Data for Revenue & Churn Analysis)
+db.purchases.insertMany([
+  { customer_id: "C001", product: "Laptop", category: "Electronics", amount: 1200, date: new Date("2026-01-10") },
+  { customer_id: "C001", product: "Mouse", category: "Electronics", amount: 25, date: new Date("2026-01-12") },
+  { customer_id: "C002", product: "Running Shoes", category: "Fashion", amount: 80, date: new Date("2025-11-05") }, 
+  { customer_id: "C003", product: "Desk Chair", category: "Furniture", amount: 150, date: new Date("2026-01-25") },
+  { customer_id: "C004", product: "Gaming Monitor", category: "Electronics", amount: 400, date: new Date("2026-02-01") },
+  { customer_id: "C005", product: "T-Shirt", category: "Fashion", amount: 20, date: new Date("2025-10-10") }, 
+  { customer_id: "C001", product: "Headphones", category: "Electronics", amount: 200, date: new Date("2026-01-15") }
+]);
+
+// 2. Customer Clicks (Data for Traffic & Demand Prediction)
+db.clicks.insertMany([
+  { customer_id: "C001", page: "Product_Page", element: "Laptop", timestamp: new Date() },
+  { customer_id: "C001", page: "Checkout", element: "Pay_Button", timestamp: new Date() },
+  { customer_id: "C002", page: "Home", element: "Banner", timestamp: new Date() },
+  { customer_id: "C006", page: "Product_Page", element: "SmartWatch", timestamp: new Date() }, 
+  { customer_id: "C006", page: "Product_Page", element: "SmartWatch", timestamp: new Date() },
+  { customer_id: "C006", page: "Cart", element: "Add_Item", timestamp: new Date() }
+]);
+
+// 3. Reviews (Data for Sentiment & Diagnostic Analysis)
+db.reviews.insertMany([
+  { customer_id: "C001", product: "Laptop", rating: 5, comment: "Excellent performance!" },
+  { customer_id: "C003", product: "Desk Chair", rating: 2, comment: "One wheel is broken." },
+  { customer_id: "C004", product: "Gaming Monitor", rating: 5, comment: "Best display ever." },
+  { customer_id: "C002", product: "Running Shoes", rating: 1, comment: "Stopped working after a week. Bad quality." }
+]);
+
+print(">>> Data Insertion Complete.");
+print("---------------------------------------------------");
+
+// --- STEP 3: PERFORM ANALYTICS ---
+
+// 1. DESCRIPTIVE: Total Revenue by Category
+print("1. [DESCRIPTIVE] Total Revenue per Category:");
+var revenue = db.purchases.aggregate([
+  { $group: { _id: "$category", totalRevenue: { $sum: "$amount" } } }
+]).toArray();
+printjson(revenue);
+
+// 2. DIAGNOSTIC: Identify Issues (Low Ratings)
+print("\n2. [DIAGNOSTIC] Products with Low Ratings (< 3 Stars):");
+var problems = db.reviews.find(
+  { rating: { $lt: 3 } },
+  { product: 1, comment: 1, _id: 0 }
+).toArray();
+printjson(problems);
+
+// 3. PREDICTIVE: Churn Risk (No purchases in 2026)
+print("\n3. [PREDICTIVE] High Churn Risk Customers (Last active before 2026):");
+var distinctRecentBuyers = db.purchases.distinct("customer_id", { date: { $gte: new Date("2026-01-01") } });
+var atRiskCustomers = db.purchases.aggregate([
+   { $match: { customer_id: { $nin: distinctRecentBuyers } } },
+   { $group: { _id: "$customer_id", lastPurchaseDate: { $max: "$date" } } }
+]).toArray();
+printjson(atRiskCustomers);
+
+// 4. PRESCRIPTIVE: Actionable Insights
+print("\n4. [PRESCRIPTIVE] Actions Required:");
+
+// Action A: Send Loyalty Coupon to High Spenders (> $1000)
+print("   -> Send 'VIP Coupon' to these High Spenders:");
+var vipUsers = db.purchases.aggregate([
+  { $group: { _id: "$customer_id", totalSpent: { $sum: "$amount" } } },
+  { $match: { totalSpent: { $gt: 1000 } } }
+]).toArray();
+printjson(vipUsers);
+
+// Action B: Flag Urgent Support Tickets (Keywords: Broken, Bad, Stopped)
+print("   -> Open Support Tickets for these reviews:");
+var supportTickets = db.reviews.find(
+  { comment: { $regex: /Broken|Bad|Stopped/i } },
+  { customer_id: 1, product: 1, issue: "$comment", _id: 0 }
+).toArray();
+printjson(supportTickets);
+>>> Old database dropped. Creating new data...
+>>> Data Insertion Complete.
