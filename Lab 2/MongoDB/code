@@ -1,0 +1,73 @@
+// a) Switch to database 'Employee' using valid JavaScript
+db = db.getSiblingDB('Employee');
+
+// b) Create collection 'Employee_Info'
+// Note: If the collection already exists, this might return an error "NamespaceExists", which you can ignore.
+try { db.createCollection("Employee_Info"); } catch (e) { print("Collection exists, proceeding..."); }
+
+// c) Insert the values into the table in batch
+db.Employee_Info.insertMany([
+  {
+    Emp_Id: 121,
+    Emp_Name: "Alice",
+    Designation: "Developer",
+    Date_of_Joining: new Date("2022-01-15"),
+    Salary: 50000,
+    Dept_Name: "IT"
+  },
+  {
+    Emp_Id: 122,
+    Emp_Name: "Bob",
+    Designation: "Manager",
+    Date_of_Joining: new Date("2021-06-20"),
+    Salary: 80000,
+    Dept_Name: "HR"
+  },
+  {
+    Emp_Id: 123,
+    Emp_Name: "Charlie",
+    Designation: "Analyst",
+    Date_of_Joining: new Date("2023-03-10"),
+    Salary: 45000,
+    Dept_Name: "Finance"
+  }
+]);
+
+// d) Update Employee name and Department of Emp-Id 121
+db.Employee_Info.updateOne(
+  { Emp_Id: 121 },
+  { $set: { Emp_Name: "Alice Smith", Dept_Name: "Engineering" } }
+);
+
+// e) Sort the details of Employee records based on salary (1 = Ascending)
+print("\n--- Sorted by Salary ---");
+db.Employee_Info.find().sort({ Salary: 1 }).forEach(printjson);
+
+// f) Alter schema to add 'Projects' column (initialize empty array for all)
+db.Employee_Info.updateMany(
+  {}, 
+  { $set: { Projects: [] } }
+);
+
+// g) Update the altered table to add project names (using $addToSet to avoid duplicates)
+db.Employee_Info.updateOne(
+  { Emp_Id: 121 },
+  { $addToSet: { Projects: { $each: ["AI_Revamp", "Cloud_Migration"] } } }
+);
+
+// h) Create a TTL of 15 seconds
+// 1. Create the index on a specific date field (e.g., 'expireAt')
+db.Employee_Info.createIndex( { "expireAt": 1 }, { expireAfterSeconds: 15 } );
+
+// 2. Insert a test document to demonstrate the TTL (will vanish after ~15s)
+db.Employee_Info.insertOne({
+    Emp_Id: 999,
+    Emp_Name: "Temporary Worker",
+    Designation: "Contractor",
+    Salary: 30000,
+    expireAt: new Date() // Sets the timer starting NOW
+});
+
+// Final verification: Print all records
+print("\n--- Final Database State ---");
+db.Employee_Info.find().forEach(printjson);
